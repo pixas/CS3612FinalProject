@@ -1,0 +1,1 @@
+python -m scripts.eval_sst2 ./dataset/SST2 ./checkpoints/ckpt-sst2-lasttokentop1.pth --pca --tsne

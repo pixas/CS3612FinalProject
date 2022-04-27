@@ -3,15 +3,16 @@ from typing import List
 
 import numpy as np
 import seaborn as sns
+import pandas as pd 
 import torch
 from matplotlib import pyplot as plt
 from model.model_mnist import MnistModel
 from sklearn.manifold import TSNE
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
-
+from .dataset import SentimentDataset
 sns.set(rc={'figure.figsize':(11.7,8.27)})
-palette = sns.color_palette("bright", 10)
+
 
 def load_mnist_data(data_dir, bsz, num_workers):
     if not os.path.exists(data_dir):
@@ -32,6 +33,21 @@ def load_mnist_data(data_dir, bsz, num_workers):
     test_loader = DataLoader(data_test, bsz, False, num_workers=num_workers)
     
     return train_loader, test_loader
+
+def load_sst2_data(data_dir, bsz, num_workers):
+    train_data = pd.read_csv(os.path.join(data_dir, 'split_train.csv'), '\t')
+    test_data = pd.read_csv(os.path.join(data_dir, 'split_test.csv'), '\t')
+    dev_data = pd.read_csv(os.path.join(data_dir, 'split_dev.csv'), '\t')
+    data_train = SentimentDataset(train_data)
+    data_test = SentimentDataset(test_data)
+    data_dev = SentimentDataset(dev_data)
+    
+    train_loader = DataLoader(data_train, bsz, True, num_workers=num_workers)
+    test_loader = DataLoader(data_test, bsz, False, num_workers=num_workers)
+    dev_loader = DataLoader(data_dev, bsz, False, num_workers=num_workers)
+    
+    return train_loader, test_loader, dev_loader
+
 
 
 def save_model(model: MnistModel, save_dir: str, top1acc=None, top5acc=None, epoch=None, description=None):
@@ -54,7 +70,7 @@ def visualize_pca(batch_data: List[np.ndarray], label: np.ndarray, n: int = 2, t
     pca_list = [pca_list[i].fit(batch_data[i]) for i in range(length)]
     
     data_decomposed = [pca_list[i].transform(batch_data[i]) for i in range(length)]
-    
+    palette = sns.color_palette("bright", 10 if task == 'mnist' else 2)
     for i in range(length):
         data = data_decomposed[i]
         # plt.scatter(data[:, 0], data[:, 1], c=color)
@@ -70,6 +86,7 @@ def visualize_tsne(batch_data: List[np.ndarray], label: np.ndarray, n: int = 2, 
     tsne_list = [TSNE(n, learning_rate='auto', init='pca') for i in range(length)]
     # tsne_list = [tsne_list[i].fit(batch_data[i]) for i in range(length)]
     data_decomposed = [tsne_list[i].fit_transform(batch_data[i]) for i in range(length)]
+    palette = sns.color_palette("bright", 10 if task == 'mnist' else 2)
     for i in range(length):
         data = data_decomposed[i]
         # plt.scatter(data[:, 0], data[:, 1], c=color)
@@ -110,3 +127,13 @@ class MyPCA:
     
     def transform(self, X):
         return X @ self.P.T
+
+
+if __name__ == "__main__":
+    a, b, c = load_sst2_data("./dataset/SST2", 4, 0)
+    for i, data in enumerate(a):
+        x, y, z = data
+        print(x.shape, y.shape, z.shape)
+        exit()
+        
+    

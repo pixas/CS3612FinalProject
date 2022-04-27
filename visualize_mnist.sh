@@ -1,1 +1,1 @@
-python -m scripts.visualize_mnist ./dataset/ ./checkpoints/ckpt-mnisttop1.pth --pca --tsne
+python -m scripts.eval_mnist ./dataset/ ./checkpoints/ckpt-mnisttop1.pth --pca --tsne

@@ -3,10 +3,8 @@ from typing import List
 
 import numpy as np
 import torch
-from matplotlib import pyplot as plt
 from model.model_mnist import MnistModel
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
+
 from torch import Tensor
 from tqdm import tqdm
 
@@ -64,7 +62,7 @@ def main():
                 # the label with the highest energy will be our prediction
                 _, predicted = torch.max(outputs.data, 1)
                 if is_valid_batch(predicted):
-                    valid_batch_data = [i.detach().cpu().numpy().reshape(args.batch_size, -1) for i in inter_feature]
+                    valid_batch_data = [i.detach().cpu().numpy().reshape(labels.shape[0], -1) for i in inter_feature]
                     predicted_result = predicted.detach().cpu().numpy()
                 total += labels.size(0)
                 top1_acc += (predicted == labels).sum().item()
