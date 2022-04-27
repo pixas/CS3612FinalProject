@@ -11,7 +11,7 @@ from torch.autograd import Variable
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 
-from scripts.utils import load_mnist_data, save_model
+from scripts.utils import load_mnist_data, plot_acc_loss, save_model
 from tqdm import tqdm
 
 def make_argparser():
@@ -39,6 +39,8 @@ def train_one_epoch(model: MnistModel, dataloader: DataLoader, loss_fn, optimize
     model.train()
     running_loss = 0
     length = len(dataloader)
+    top1_acc = 0
+    total_seen = 0
     with tqdm(total=length) as t:
         for i, (images, labels) in enumerate(dataloader, 0):
             t.set_description('Epoch {:03d}'.format(epoch))
@@ -56,7 +58,9 @@ def train_one_epoch(model: MnistModel, dataloader: DataLoader, loss_fn, optimize
             loss.backward()
             # adjust parameters based on the calculated gradients
             optimizer.step()
-
+            _, predicted = torch.max(outputs.data, 1)
+            top1_acc += (predicted == labels).sum().item()
+            total_seen += predicted.shape[0]
             # Let's print statistics for every 1,000 images
             running_loss += loss.item()     # extract the loss value
             t.set_postfix({'loss': loss.item()})
@@ -67,8 +71,10 @@ def train_one_epoch(model: MnistModel, dataloader: DataLoader, loss_fn, optimize
             #     # zero the loss
             #     running_loss = 0.0
             t.update(1)
-    
-    return running_loss
+    running_loss /= total_seen
+    top1_acc = top1_acc * 100 / total_seen
+    return running_loss, top1_acc
+
 
 def train(args: Namespace):
     num_epochs = args.num_epochs
@@ -109,10 +115,12 @@ def train(args: Namespace):
         best_top5 = 0
         
     optimizer = Adam(model.parameters(), lr=lr, weight_decay=0.0001)
-        
+    train_loss, train_acc = [], []
     for epoch in range(begin_epoch, begin_epoch + num_epochs):
-        train_one_epoch(model, train_loader, loss_fn, optimizer, epoch, device)
+        loss, acc = train_one_epoch(model, train_loader, loss_fn, optimizer, epoch, device)
         top1_acc, top5_acc = test_acc(model, test_loader, device)
+        train_loss.append(loss)
+        train_acc.append(acc)
         print("Epoch {:02d}, Top1-acc: {:.2f}%".format(epoch, top1_acc))
         if top1_acc > best_top1:
             save_model(model, save_dir, top1_acc, top5_acc, epoch, 'top1.pth')
@@ -120,7 +128,8 @@ def train(args: Namespace):
         if top5_acc > best_top5:
             save_model(model, save_dir, top1_acc, top5_acc, epoch, 'top5.pth')
             best_top5 = top5_acc
-        
+    
+    plot_acc_loss(train_loss, train_acc)
 
 @torch.no_grad()
 def test_acc(model: MnistModel, test_loader: DataLoader, device: torch.device):

@@ -13,6 +13,22 @@ from torchvision import datasets, transforms
 from .dataset import SentimentDataset
 sns.set(rc={'figure.figsize':(11.7,8.27)})
 
+def plot_acc_loss(loss_list, acc_list, data_mode='train', task='mnist'):
+    length = len(loss_list)
+    f, (ax1, ax2) = plt.subplots(1, 2)
+    epoch_list = np.arange(length)
+    ax1.plot(epoch_list, loss_list)
+    ax1.set_xlabel('Epoch')
+    ax1.set_ylabel("Loss")
+    
+    ax2.plot(epoch_list, acc_list)
+    ax2.set_xlabel('Epoch')
+    ax2.set_ylabel("Accuracy")
+    
+    plt.savefig("./images/{}-{}-loss-acc.png".format(task, data_mode), dpi=600)
+    plt.cla()
+    
+
 
 def load_mnist_data(data_dir, bsz, num_workers):
     if not os.path.exists(data_dir):

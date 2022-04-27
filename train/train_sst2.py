@@ -11,7 +11,7 @@ from torch.autograd import Variable
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 
-from scripts.utils import load_sst2_data, save_model
+from scripts.utils import load_sst2_data, save_model, plot_acc_loss
 from tqdm import tqdm
 
 
@@ -35,7 +35,9 @@ def train_one_epoch(model: SST2Model, dataloader: DataLoader, loss_fn, optimizer
     
     model.train()
     running_loss = 0
+    top1_acc = 0.0
     length = len(dataloader)
+    total_seen = 0
     with tqdm(total=length) as t:
         for i, (sentences, attention_mask, labels, nonzero_index) in enumerate(dataloader, 0):
             t.set_description('Epoch {:03d}'.format(epoch))
@@ -55,27 +57,25 @@ def train_one_epoch(model: SST2Model, dataloader: DataLoader, loss_fn, optimizer
             loss.backward()
             # adjust parameters based on the calculated gradients
             optimizer.step()
-
+            _, predicted = torch.max(outputs.data, 1)
+            top1_acc += (predicted == labels).sum().item()
+            total_seen += predicted.shape[0]
             # Let's print statistics for every 1,000 images
             running_loss += loss.item()     # extract the loss value
             t.set_postfix({'loss': loss.item()})
-            # if i % 1000 == 999:    
-            #     # print every 1000 (twice per epoch) 
-            #     print('[%d, %5d] loss: %.3f' %
-            #             (epoch + 1, i + 1, running_loss / 1000))
-            #     # zero the loss
-            #     running_loss = 0.0
+
             t.update(1)
-    
-    return running_loss
+    running_loss /= length
+    top1_acc = top1_acc * 100 / total_seen
+    return running_loss, top1_acc
 
 
 @torch.no_grad()
-def test_acc(model: SST2Model, test_loader: DataLoader, device: torch.device):
+def test_acc(model: SST2Model, test_loader: DataLoader, loss_fn, device: torch.device):
     model.eval()
     top1_acc = 0.0
     total = 0.0
-    
+    running_loss = 0
     with torch.no_grad():
         length = len(test_loader)
         with tqdm(total=length) as t:
@@ -87,6 +87,8 @@ def test_acc(model: SST2Model, test_loader: DataLoader, device: torch.device):
                 attention_mask = attention_mask.to(device)
                 nonzero_index = nonzero_index.to(device)
                 outputs = model(sentences, attention_mask, nonzero_index)
+                loss = loss_fn(outputs, labels)
+                running_loss += loss.item()
                 # the label with the highest energy will be our prediction
                 _, predicted = torch.max(outputs.data, 1)
 
@@ -98,8 +100,8 @@ def test_acc(model: SST2Model, test_loader: DataLoader, device: torch.device):
 
     # compute the accuracy over all test images
     top1_acc = (100 * top1_acc / total)
-
-    return top1_acc
+    running_loss /= total
+    return running_loss, top1_acc
 
 
 def train(args: Namespace):
@@ -137,15 +139,26 @@ def train(args: Namespace):
 
         
     optimizer = Adam(model.parameters(), lr=lr, weight_decay=0.0001)
-        
+    train_loss, train_acc = [], []
+    dev_loss, dev_acc = [], []
     for epoch in range(begin_epoch, begin_epoch + num_epochs):
-        train_one_epoch(model, train_loader, loss_fn, optimizer, epoch, device)
-        top1_acc = test_acc(model, dev_loader, device)
+        loss, acc = train_one_epoch(model, train_loader, loss_fn, optimizer, epoch, device)
+        train_loss.append(loss)
+        train_acc.append(acc)
+
+        loss, top1_acc = test_acc(model, dev_loader, loss_fn, device)
+        dev_loss.append(loss)
+        dev_acc.append(top1_acc)
+
         print("Epoch {:02d}, Top1-acc: {:.2f}%".format(epoch, top1_acc))
         if top1_acc > best_top1:
             save_model(model, save_dir, top1_acc, None, epoch, 'top1.pth')
             best_top1 = top1_acc
         save_model(model, save_dir, top1_acc, None, epoch, 'last.pth')
+    
+    plot_acc_loss(train_loss, train_acc, 'train', 'sst2')
+    plot_acc_loss(dev_loss, dev_acc, 'dev', 'sst2')
+    
 
 def main():
     args = make_argparser()

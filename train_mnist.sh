@@ -1,1 +1,1 @@
-python -m train.train_mnist ./dataset/ --save_dir checkpoints/ckpt-mnist --num_epochs 50 --ckpt_dir ./checkpoints/ckpt-mnisttop1.pth
+python -m train.train_mnist ./dataset/ --save_dir checkpoints/ckpt-mnist --num_epochs 30
