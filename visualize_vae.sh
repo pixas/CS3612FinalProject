@@ -1,0 +1,1 @@
+python -m scripts.eval_vae ./dataset/ --ckpt_dir ./checkpoints/ckpt-vaebest.pth

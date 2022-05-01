@@ -1,0 +1,1 @@
+python -m train.train_fashion_mnist ./dataset/ --save_dir checkpoints/ckpt-vae --num_epochs 50 

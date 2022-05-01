@@ -64,14 +64,41 @@ def load_sst2_data(data_dir, bsz, num_workers):
     
     return train_loader, test_loader, dev_loader
 
+def load_fashion_mnist_data(data_dir, bsz, num_workers):
+    if not os.path.exists(data_dir):
+        download=True
+    else:
+        download=False
+    
+    train_set = datasets.FashionMNIST(
+        root=data_dir,
+        transform=transforms.ToTensor(),
+        train=True,
+        download=download
+    )
+    
+    test_set = datasets.FashionMNIST(
+        root=data_dir,
+        transform=transforms.ToTensor(),
+        train=False,
+        download=download
+    )
+    
+    train_loader = DataLoader(train_set, bsz, True, num_workers=num_workers)
+    test_loader = DataLoader(test_set, bsz, False, num_workers=num_workers)
+    
+    return train_loader, test_loader
+    
+    
 
 
-def save_model(model: MnistModel, save_dir: str, top1acc=None, top5acc=None, epoch=None, description=None):
+def save_model(model: MnistModel, save_dir: str, top1acc=None, top5acc=None, epoch=None, description=None, loss=None):
     torch.save({
         'model': model.state_dict(),
         'epoch': epoch,
         'top1acc': top1acc,
-        'top5acc': top5acc
+        'top5acc': top5acc,
+        'best_loss': loss
     }, save_dir if description is None else save_dir + description)
 
 
@@ -146,10 +173,7 @@ class MyPCA:
 
 
 if __name__ == "__main__":
-    a, b, c = load_sst2_data("./dataset/SST2", 4, 0)
-    for i, data in enumerate(a):
-        x, y, z = data
-        print(x.shape, y.shape, z.shape)
-        exit()
+    x, y = load_fashion_mnist_data("./dataset/", 4, 0)
+    
         
     
