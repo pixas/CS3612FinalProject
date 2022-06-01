@@ -14,8 +14,8 @@ def make_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("data", type=str)
     parser.add_argument('ckpt', type=str)
-    parser.add_argument('--pca', action='store_true')
-    parser.add_argument('--tsne', action='store_true')
+    parser.add_argument('--pca', action='store_true', default=False)
+    parser.add_argument('--tsne', action='store_true', default=False)
     parser.add_argument("--num_layers", default=2, type=int)
     parser.add_argument("--conv_kernels", default=[[3, 3], [5, 5]], type=List[List[int]])
     parser.add_argument("--strides", default=[[2, 2], [2, 2]], type=List[List[int]])
@@ -41,7 +41,7 @@ def main():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
     model = MnistModel(args.num_layers, args.conv_kernels, args.strides, args.hidden_dims, dropout=args.dropout).to(device)
-    model_parameter = torch.load(ckpt_dir)
+    model_parameter = torch.load(ckpt_dir, map_location=device)
     model.load_state_dict(model_parameter['model'])
     _, test_loader = load_mnist_data(args.data, args.batch_size, args.num_workers)
     

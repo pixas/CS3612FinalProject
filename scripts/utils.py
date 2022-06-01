@@ -3,7 +3,8 @@ from typing import List
 
 import numpy as np
 import seaborn as sns
-import pandas as pd 
+import pandas as pd
+from sklearn import metrics 
 import torch
 from matplotlib import pyplot as plt
 from model.model_mnist import MnistModel
@@ -11,6 +12,7 @@ from sklearn.manifold import TSNE
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from .dataset import SentimentDataset
+import copy
 sns.set(rc={'figure.figsize':(11.7,8.27)})
 
 def plot_acc_loss(loss_list, acc_list, data_mode='train', task='mnist'):
@@ -171,6 +173,130 @@ class MyPCA:
     def transform(self, X):
         return X @ self.P.T
 
+class MytSNE:
+    def __init__(self, n_components=2, max_iter=1000, neighbors=30,
+                 learning_rate=200, embed_scale=0.1, tol=1e-5) -> None:
+        self.n_components=n_components
+        self.max_iter = max_iter
+        self.neighbors = neighbors
+        self.learning_rate = learning_rate
+        self.embed_scale = embed_scale
+        self.tol = tol
+    
+    def fit_transform(self, X: np.ndarray):
+        n_samples, n_features = X.shape 
+        P = self.calc_matrix_P(X)
+        Y = np.random.randn(n_samples, self.n_components) * 1e-4
+        Q = self.calc_matrix_Q(Y)
+        dy = self.calc_grad(P, Q, Y)
+        for i in range(self.max_iter):
+            if i == 0:
+                Y = Y - self.learning_rate * dy
+                Y1 = Y
+                error1 = self.calc_loss(P, Q)
+            elif i == 1:
+                Y = Y - self.learning_rate * dy
+                Y2 = Y
+                error2 = self.calc_loss(P, Q)
+            else:
+                YY = Y - self.learning_rate * dy + self.embed_scale * (Y2 - Y1)
+                QQ = self.calc_matrix_Q(YY)
+                error = self.calc_loss(P, QQ)
+                if error > error2:
+                    self.learning_rate *= 0.7
+                    continue
+                elif abs(error - error2) > abs(error2 - error1):
+                    self.learning_rate *= 1.2
+                Y = YY
+                error1 = error2
+                error2 = error
+                Q = QQ 
+                dy = self.calc_grad(P, Q, Y)
+                Y1 = Y2 
+                Y2 = Y 
+            if self.calc_loss(P, Q) < self.tol:
+                return Y
+            if np.fmod(i+1,10)==0:
+                print ('%s iterations the error is %s, A is %s'%(str(i+1),str(round(self.calc_loss(P,Q),2)),str(round(self.learning_rate,3))))
+        return Y
+
+    def calc_matrix_P(self, X: np.ndarray):
+        entropy=np.log(self.neighbors)
+        n1,n2=X.shape
+        D=np.square(metrics.pairwise_distances(X))
+        D_sort=np.argsort(D,axis=1)
+        P=np.zeros((n1,n1))
+        for i in range(n1):
+            Di=D[i,D_sort[i,1:]]
+            P[i,D_sort[i,1:]]=self.calc_p(Di,entropy=entropy)
+        P=(P+np.transpose(P))/(2*n1)
+        P=np.maximum(P,1e-100)
+        return P
+    
+    def calc_p(self, D: np.ndarray, entropy: float, iter_times=50):
+        beta=1.0
+        H=self.calc_entropy(D,beta)
+        error=H-entropy
+        k=0
+        betamin=-np.inf
+        betamax=np.inf
+        while np.abs(error)>1e-4 and k<=iter_times:
+            if error > 0:
+                betamin=copy.deepcopy(beta)
+                if betamax==np.inf:
+                    beta=beta*2
+                else:
+                    beta=(beta+betamax)/2
+            else:
+                betamax=copy.deepcopy(beta)
+                if betamin==-np.inf:
+                    beta=beta/2
+                else:
+                    beta=(beta+betamin)/2
+            H=self.calc_entropy(D,beta)
+            error=H-entropy
+            k+=1
+        P=np.exp(-D*beta)
+        P=P/np.sum(P)
+        return P
+
+    def calc_entropy(self, D: np.ndarray, beta: float):
+        P=np.exp(-D*beta)
+        sumP=sum(P)
+        sumP=np.maximum(sumP,1e-200)
+        H=np.log(sumP) + beta * np.sum(D * P) / sumP
+        return H
+    
+    
+    def calc_matrix_Q(self, Y: np.ndarray):
+        n1, n2=Y.shape
+        D=np.square(metrics.pairwise_distances(Y))
+
+        Q=(1/(1+D))/(np.sum(1/(1+D))-n1)
+        Q=Q/(np.sum(Q)-np.sum(Q[range(n1),range(n1)]))
+        Q[np.arange(n1),np.arange(n1)]=0
+        Q=np.maximum(Q,1e-100)
+        return Q
+    
+    def calc_grad(self, P: np.ndarray, Q: np.ndarray, Y: np.ndarray):
+        n1,n2=Y.shape
+        grad=np.zeros((n1,n2))
+        for i in range(n1):
+            E=(1+np.sum((Y[i,:]-Y)**2,axis=1))**(-1)
+            F=Y[i,:]-Y
+            G=(P[i,:]-Q[i,:])
+            E=E.reshape((-1,1))
+            G=G.reshape((-1,1))
+            G=np.tile(G,(1,n2))
+            E=np.tile(E,(1,n2))
+            grad[i,:]=np.sum(4*G*E*F,axis=0)
+        return grad
+
+    
+    def calc_loss(self, P: np.ndarray, Q: np.ndarray):
+        kl_loss = np.sum(P * np.log(P / Q))
+        return kl_loss
+        
 
 if __name__ == "__main__":
     x, y = load_fashion_mnist_data("./dataset/", 4, 0)
