@@ -8,6 +8,7 @@ __pycache__/
 *.gz
 *.out
 *.aux
+report/
 # Distribution / packaging
 .Python
 build/
