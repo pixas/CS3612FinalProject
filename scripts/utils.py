@@ -236,8 +236,8 @@ class MytSNE:
                 Y2 = Y 
             if self.calc_loss(P, Q) < self.tol:
                 return Y
-            if np.fmod(i+1,10)==0:
-                print ('%s iterations the error is %s, Learning Rate is %s'%(str(i+1),str(round(self.calc_loss(P,Q),2)),str(round(self.learning_rate,3))))
+            # if np.fmod(i+1,10)==0:
+            #     print ('%s iterations the error is %s, Learning Rate is %s'%(str(i+1),str(round(self.calc_loss(P,Q),2)),str(round(self.learning_rate,3))))
         return Y
 
     def calc_matrix_P(self, X: np.ndarray):
