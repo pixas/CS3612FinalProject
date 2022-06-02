@@ -14,21 +14,21 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from .dataset import SentimentDataset
 import copy
-sns.set(rc={'figure.figsize':(11.7,8.27)})
+sns.set(rc={'figure.figsize':(18, 8)})
 
 def plot_acc_loss(loss_list, acc_list, data_mode='train', task='mnist'):
     length = len(loss_list)
     f, (ax1, ax2) = plt.subplots(1, 2)
-    
+    # f, ax = plt.subplots(1,1)
     epoch_list = np.arange(length)
     ax1.plot(epoch_list, loss_list)
     ax1.set_xlabel('Epoch')
     ax1.set_ylabel("Loss")
-    
     ax2.plot(epoch_list, acc_list)
     ax2.set_xlabel('Epoch')
     ax2.set_ylabel("Accuracy")
-    plt.axis("equal")
+
+
     plt.savefig("./images/{}-{}-loss-acc.png".format(task, data_mode), dpi=600)
     plt.cla()
     
@@ -117,6 +117,7 @@ def save_model(model: MnistModel, save_dir: str, top1acc=None, top5acc=None, epo
 
 
 def visualize_pca(batch_data: List[np.ndarray], label: np.ndarray, n: int = 2, task: str='mnist'):
+    sns.set(rc={'figure.figsize':(8, 8)})
     length = len(batch_data)
     convert = lambda x: 'C{}'.format(x)
     color = [convert(x) for x in label]
@@ -132,14 +133,17 @@ def visualize_pca(batch_data: List[np.ndarray], label: np.ndarray, n: int = 2, t
         fig = sns.scatterplot(data[:,0], data[:,1], hue=label, legend='full', palette=palette)
         x_tick = plt.xticks()[0]
         y_tick = plt.yticks()[0]
-        plt.xticks([float(x) for x in x_tick], fontsize=17)
-        plt.yticks([float(y) for y in y_tick], fontsize=17)
+        ax = plt.gca()
+        ax.ticklabel_format(style='sci', scilimits=(-1, 2), axis='both')
+        plt.xticks(x_tick, fontsize=17)
+        plt.yticks(y_tick, fontsize=17)
         plt.legend(fontsize=17)
         scatter_fig = fig.get_figure()
         scatter_fig.savefig("./images/{}_feature_map{}_pca.png".format(task, i + 1), dpi=600)
         plt.cla()
 
 def visualize_tsne(batch_data: List[np.ndarray], label: np.ndarray, n: int = 2, task: str='mnist', neighbors:int=64):
+    sns.set(rc={'figure.figsize':(8, 8)})
     length = len(batch_data)
     convert = lambda x: 'C{}'.format(x)
     color = [convert(x) for x in label]
@@ -152,6 +156,8 @@ def visualize_tsne(batch_data: List[np.ndarray], label: np.ndarray, n: int = 2, 
         data = data_decomposed[i]
         # plt.scatter(data[:, 0], data[:, 1], c=color)
         fig = sns.scatterplot(data[:,0], data[:,1], hue=label, legend='full', palette=palette)
+        ax = plt.gca()
+        ax.ticklabel_format(style='sci', scilimits=(-1, 2), axis='both')
         x_tick = plt.xticks()[0]
         y_tick = plt.yticks()[0]
         plt.xticks([float(x) for x in x_tick], fontsize=17)

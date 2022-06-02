@@ -96,7 +96,7 @@ The corresponding PCA code is presented below and the t-SNE code is pasted at th
 I follow the handout of Prof. Zhang to implement it by myself.
 My implemented PCA method does not use eigen-decomposition based method because it costs a lot. 
 Instead, I use SVD to extract main components which can also represent the feature of original data. 
-The code for SVD is shown below and the main structure of code of t-SNE is shown in Sec.~\ref{code:tsne}
+The code for PCA is shown below and the main structure of code of t-SNE is shown in Sec.~\ref{code:tsne}
 \begin{lstlisting}
 class MyPCA:
     def __init__(self, n_components: int = 2) -> None:

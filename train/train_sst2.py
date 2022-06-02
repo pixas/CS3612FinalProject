@@ -128,10 +128,10 @@ def train(args: Namespace):
     
     if model_path is not None and os.path.exists(model_path):
         state_dict = torch.load(model_path)
-        begin_epoch = state_dict['epoch']
+        begin_epoch = state_dict['epoch'] + 1
         model.load_state_dict(state_dict['model'])
         best_top1 = state_dict['top1acc']
-
+        print("Model paramters loaded successfully")
     else:
         
         begin_epoch = 0

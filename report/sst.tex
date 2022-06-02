@@ -1,6 +1,6 @@
 
 \section{Sentiment Analysis}
-\begin{figure}
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=0.5\textwidth]{lstm_model.pdf}
     \caption{Illustration of LSTM models.}
@@ -25,15 +25,15 @@ I only sample 6920 sentences from the dataset and maintain the ratio of negative
 I split the dataset as training/validation/testing to 0.8/0.1/0.1, respectively.
 Again I adopt 0.2 as the dropout rate to mitigate over-fitting.
 
-\begin{figure}
+\begin{figure}[tbp]
     \centering
-    \includegraphics[width=0.8\linewidth]{../images/sst2-train-loss-acc.png}
+    \includegraphics[width=0.9\textwidth]{../images/sst2-train-loss-acc.png}
     \caption{Change of training loss and accuracy in SST-2 dataset.}
     \label{fig:sst-train_loss}
 \end{figure}
-\begin{figure}
+\begin{figure}[tbp]
     \centering
-    \includegraphics[width=0.8\linewidth]{../images/sst2-dev-loss-acc.png}
+    \includegraphics[width=0.9\textwidth]{../images/sst2-dev-loss-acc.png}
     \caption{Change of validation loss and accuracy in SST-2 dataset.}
     \label{fig:sst-dev_loss}
 \end{figure}
@@ -108,7 +108,7 @@ And I again use negative log-liklihood function defined in Eq.~\ref{eq:nllloss},
 
 \subsection{Experiment Result}
 The training accuracy and validation accuracy are plotted in Fig.~\ref{fig:sst-train_loss} and Fig.~\ref{fig:sst-dev_loss}. 
-The best checkpoint can achieve $68.64\%$ accuracy, which is on par with fine-trained LSTM models.
+The best checkpoint can achieve $70.52\%$ accuracy, which is on par with fine-trained LSTM models.
 From training loss figure, the loss is smoothly decreasing, meaning that the learning rate is appropriate.
 From validation loss figure, the validation loss is increasing but accuracy is also increasing in the first 10 epochs. 
 After 10 epochs, the validation accuracy is fluctuating between $70\%$ and $72\%$.
