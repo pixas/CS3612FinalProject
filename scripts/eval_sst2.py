@@ -1,4 +1,6 @@
 import argparse
+import os
+import pickle
 from typing import List
 
 import numpy as np
@@ -15,10 +17,11 @@ def make_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("data", type=str)
     parser.add_argument('ckpt', type=str)
-    parser.add_argument('--pca', action='store_true')
-    parser.add_argument('--tsne', action='store_true')
+    parser.add_argument('--pca', action='store_true', default=False)
+    parser.add_argument('--tsne', action='store_true', default=False)
+    parser.add_argument('--tsne_neighbors', type=int, default=128)
 
-    parser.add_argument("--hidden_dims", default=[512, 512], type=List[int])
+    parser.add_argument("--hidden_dims", default="[512, 512]", type=str)
     parser.add_argument("--dropout", default=0.1, type=float)
     parser.add_argument("--batch_size", default=256, type=int)
     parser.add_argument("--num_workers", default=0, type=int)
@@ -33,11 +36,12 @@ def main():
     
     ckpt_dir = args.ckpt
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    
-    model = SST2Model(args.hidden_dims, dropout=args.dropout).to(device)
+    _, test_loader, _, dictionary = load_sst2_data(args.data, args.batch_size, args.num_workers, train=False, dev=False)
+
+    dict_size = dictionary['dictionary_size']
+    model = SST2Model(eval(args.hidden_dims), dropout=args.dropout, dict_size=dict_size).to(device)
     model_parameter = torch.load(ckpt_dir)
     model.load_state_dict(model_parameter['model'])
-    _, _, test_loader = load_sst2_data(args.data, args.batch_size, args.num_workers)
     
     model.eval()
     top1_acc = 0.0
@@ -72,7 +76,7 @@ def main():
         visualize_pca(valid_batch_data, label=predicted_result, task='sst2')
         
     if eval_tsne:
-        visualize_tsne(valid_batch_data, label=predicted_result, task='sst2')
+        visualize_tsne(valid_batch_data, label=predicted_result, task='sst2', neighbors=args.tsne_neighbors)
 
 
 

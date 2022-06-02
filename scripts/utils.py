@@ -1,4 +1,5 @@
 import os
+import pickle
 from typing import List
 
 import numpy as np
@@ -18,6 +19,7 @@ sns.set(rc={'figure.figsize':(11.7,8.27)})
 def plot_acc_loss(loss_list, acc_list, data_mode='train', task='mnist'):
     length = len(loss_list)
     f, (ax1, ax2) = plt.subplots(1, 2)
+    
     epoch_list = np.arange(length)
     ax1.plot(epoch_list, loss_list)
     ax1.set_xlabel('Epoch')
@@ -26,7 +28,7 @@ def plot_acc_loss(loss_list, acc_list, data_mode='train', task='mnist'):
     ax2.plot(epoch_list, acc_list)
     ax2.set_xlabel('Epoch')
     ax2.set_ylabel("Accuracy")
-    
+    plt.axis("equal")
     plt.savefig("./images/{}-{}-loss-acc.png".format(task, data_mode), dpi=600)
     plt.cla()
     
@@ -52,19 +54,27 @@ def load_mnist_data(data_dir, bsz, num_workers):
     
     return train_loader, test_loader
 
-def load_sst2_data(data_dir, bsz, num_workers):
-    train_data = pd.read_csv(os.path.join(data_dir, 'split_train.csv'), '\t')
-    test_data = pd.read_csv(os.path.join(data_dir, 'split_test.csv'), '\t')
-    dev_data = pd.read_csv(os.path.join(data_dir, 'split_dev.csv'), '\t')
-    data_train = SentimentDataset(train_data)
-    data_test = SentimentDataset(test_data)
-    data_dev = SentimentDataset(dev_data)
+def load_sst2_data(data_dir, bsz, num_workers, train=True, dev=True, test=True):
+    assert train or dev or test, "Must specify one split of dataset"
+    train_loader = dev_loader = test_loader = None
+    if train:
+        train_data = np.load(os.path.join(data_dir, 'split_train.npy'))
+        data_train = SentimentDataset(train_data)
+        train_loader = DataLoader(data_train, bsz, True, num_workers=num_workers)
+    if dev:
+        dev_data = np.load(os.path.join(data_dir, 'split_dev.npy'))
+        data_dev = SentimentDataset(dev_data)
+        dev_loader = DataLoader(data_dev, bsz, False, num_workers=num_workers)
+    if test:
+        test_data = np.load(os.path.join(data_dir, 'split_test.npy'))
+        data_test = SentimentDataset(test_data)
+        test_loader = DataLoader(data_test, bsz, False, num_workers=num_workers)
+    with open(os.path.join(data_dir, 'dictionary.pkl'), 'rb') as f:
+        dictionary = pickle.load(f)
     
-    train_loader = DataLoader(data_train, bsz, True, num_workers=num_workers)
-    test_loader = DataLoader(data_test, bsz, False, num_workers=num_workers)
-    dev_loader = DataLoader(data_dev, bsz, False, num_workers=num_workers)
     
-    return train_loader, test_loader, dev_loader
+    
+    return train_loader, test_loader, dev_loader, dictionary
 
 def load_fashion_mnist_data(data_dir, bsz, num_workers):
     if not os.path.exists(data_dir):
@@ -120,15 +130,21 @@ def visualize_pca(batch_data: List[np.ndarray], label: np.ndarray, n: int = 2, t
         data = data_decomposed[i]
         # plt.scatter(data[:, 0], data[:, 1], c=color)
         fig = sns.scatterplot(data[:,0], data[:,1], hue=label, legend='full', palette=palette)
+        x_tick = plt.xticks()[0]
+        y_tick = plt.yticks()[0]
+        plt.xticks([float(x) for x in x_tick], fontsize=17)
+        plt.yticks([float(y) for y in y_tick], fontsize=17)
+        plt.legend(fontsize=17)
         scatter_fig = fig.get_figure()
         scatter_fig.savefig("./images/{}_feature_map{}_pca.png".format(task, i + 1), dpi=600)
         plt.cla()
 
-def visualize_tsne(batch_data: List[np.ndarray], label: np.ndarray, n: int = 2, task: str='mnist'):
+def visualize_tsne(batch_data: List[np.ndarray], label: np.ndarray, n: int = 2, task: str='mnist', neighbors:int=64):
     length = len(batch_data)
     convert = lambda x: 'C{}'.format(x)
     color = [convert(x) for x in label]
     tsne_list = [TSNE(n, learning_rate='auto', init='pca') for i in range(length)]
+    tsne_list = [MytSNE(n, neighbors=neighbors) for i in range(length)]
     # tsne_list = [tsne_list[i].fit(batch_data[i]) for i in range(length)]
     data_decomposed = [tsne_list[i].fit_transform(batch_data[i]) for i in range(length)]
     palette = sns.color_palette("bright", 10 if task == 'mnist' else 2)
@@ -136,6 +152,11 @@ def visualize_tsne(batch_data: List[np.ndarray], label: np.ndarray, n: int = 2, 
         data = data_decomposed[i]
         # plt.scatter(data[:, 0], data[:, 1], c=color)
         fig = sns.scatterplot(data[:,0], data[:,1], hue=label, legend='full', palette=palette)
+        x_tick = plt.xticks()[0]
+        y_tick = plt.yticks()[0]
+        plt.xticks([float(x) for x in x_tick], fontsize=17)
+        plt.yticks([float(y) for y in y_tick], fontsize=17)
+        plt.legend(fontsize=17)
         scatter_fig = fig.get_figure()
         scatter_fig.savefig("./images/{}_feature_map{}_tsne.png".format(task, i + 1), dpi = 600)
         plt.cla()
@@ -160,14 +181,7 @@ class MyPCA:
         U *= signs
         VT *= signs[:, np.newaxis]
         self.P = VT[:self.n]
-        # scatter_matrix = norm_x.T @ norm_x
-        # eig_val, eig_vec = np.linalg.eig(scatter_matrix)
 
-        # eig_pairs = [(np.abs(eig_val[i]), eig_vec[:,i]) for i in range(n_features)]
-        # eig_pairs.sort(reverse=True, key=lambda x: x[0])
-        # # select the top k eig_vec
-        # feature=np.array([ele[1] for ele in eig_pairs[:self.n]])
-        # self.P = feature.T
         return self
     
     def transform(self, X):
@@ -217,7 +231,7 @@ class MytSNE:
             if self.calc_loss(P, Q) < self.tol:
                 return Y
             if np.fmod(i+1,10)==0:
-                print ('%s iterations the error is %s, A is %s'%(str(i+1),str(round(self.calc_loss(P,Q),2)),str(round(self.learning_rate,3))))
+                print ('%s iterations the error is %s, Learning Rate is %s'%(str(i+1),str(round(self.calc_loss(P,Q),2)),str(round(self.learning_rate,3))))
         return Y
 
     def calc_matrix_P(self, X: np.ndarray):
@@ -300,6 +314,13 @@ class MytSNE:
 
 if __name__ == "__main__":
     x, y = load_fashion_mnist_data("./dataset/", 4, 0)
-    
+    for i, (images, labels) in enumerate(x):
+        print(images.shape)
+        plt.imshow(images[0, 0].detach().cpu().numpy(), 'gray')
+        plt.grid(False)
+        plt.xticks([])
+        plt.yticks([])
+        plt.savefig("./images/vae_example.png", dpi=600)
+        exit()
         
     

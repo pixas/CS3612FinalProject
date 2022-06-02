@@ -3,33 +3,28 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 import torch.utils.data as Data
-import transformers
 
-model_class, tokenizer_class, pretrained_weights = \
-    transformers.DistilBertModel, transformers.DistilBertTokenizer, 'distilbert-base-uncased'
 
-tokenizer = tokenizer_class.from_pretrained(pretrained_weights)
 
 class SentimentDataset(Data.Dataset):
-    def __init__(self, data_df: pd.DataFrame) -> None:
+    def __init__(self, data_array) -> None:
         super(SentimentDataset, self).__init__()
         
-        print(data_df.iloc[:, 1].value_counts())
-        # self.labels = F.one_hot(torch.tensor())
-        self.labels = torch.tensor(data_df.iloc[:, 1].values)
+        self.data_array = data_array
+        input_ids = torch.tensor(self.data_array[:, 1:])
+        self.labels = torch.tensor(self.data_array[:, 0], dtype=torch.int64)
         self.length = len(self.labels)
+        # self.labels = F.one_hot(torch.tensor())
+        attention_mask = (input_ids != 0)
 
 
-        sentences = list(data_df.iloc[:, 0])
-        result = tokenizer(sentences, return_tensors='pt', padding=True, add_special_tokens = True)
-        input_ids = result['input_ids']
-        attention_mask = result['attention_mask']
         nonzero_index = torch.zeros((self.length, 1), dtype=torch.int64)
 
         for i in range(self.length):
-            x = attention_mask[i]
+            x = input_ids[i]
             x_zero = torch.nonzero(x)
             nonzero_index[i, 0] = x_zero[-1]
+            input_ids[i, :x_zero[-1] + 1] -=1
         self.nonzero_index = nonzero_index
         self.data = input_ids
         print("data shape: {}".format(self.data.shape))

@@ -1,1 +1,1 @@
-python -m train.train_sst2 ./dataset/SST2 --save_dir checkpoints/ckpt-sst2-lasttoken --num_epochs 40 --batch_size 512
+python -m train.train_sst2 ./dataset/SST2 --save_dir checkpoints/ckpt-sst2-lasttoken --num_epochs 50 --batch_size 512 --learning_rate 1e-4 --hidden_dims "[256, 256, 256]" --dropout 0.2

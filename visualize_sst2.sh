@@ -1,1 +1,1 @@
-python -m scripts.eval_sst2 ./dataset/SST2 ./checkpoints/ckpt-sst2-lasttokentop1.pth --pca --tsne
+python -m scripts.eval_sst2 ./dataset/SST2 ./checkpoints/ckpt-sst2-lasttokentop1.pth  --hidden_dims "[256, 256, 256]" --dropout 0.2 --pca --tsne

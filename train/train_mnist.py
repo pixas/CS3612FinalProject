@@ -104,7 +104,7 @@ def train(args: Namespace):
     if model_path is not None and os.path.exists(model_path):
         state_dict = torch.load(model_path)
         begin_epoch = state_dict['epoch']
-        model = model.load_state_dict(state_dict['model'])
+        model.load_state_dict(state_dict['model'])
         best_top1 = state_dict['top1acc']
         best_top5 = state_dict['top5acc']
     else:

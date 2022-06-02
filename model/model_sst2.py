@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 import torch.nn.functional as F
-from scripts.dataset import model_class, tokenizer_class, pretrained_weights
+
 rnn = nn.LSTM(10, 20, 2)
 input = torch.randn(5, 3, 10)
 h0 = torch.randn(2, 3, 20)
@@ -81,32 +81,42 @@ class LSTMLayer(nn.Module):
 
 class SST2Model(nn.Module):
     def __init__(self, hidden_dims: List[int], output_class: int = 2,
-                 dropout: float = 0.1) -> None:
+                 dropout: float = 0.1,
+                 dict_size: int = None) -> None:
         super(SST2Model, self).__init__()
-        self.embed_dim = 768
+        assert dict_size is not None, "Must input a dictionary size"
+        self.embed_dim = hidden_dims[0]
         self.hidden_dims = hidden_dims
-        self.embed = model_class.from_pretrained(pretrained_weights)
-        for layer in list(self.embed.parameters()):
-            layer.requires_grad = False
-        
+        self.embed = nn.Embedding(dict_size, self.embed_dim)
+
+        self.num_layers = len(hidden_dims)
+        self.lstm_layers = nn.ModuleList([
+            LSTMLayer(self.embed_dim if i == 0 else self.hidden_dims[i],
+                      self.hidden_dims[i - 1], self.hidden_dims[i])
+        for i in range(self.num_layers)])
+        self.layer_norms = nn.ModuleList([
+            nn.LayerNorm(self.hidden_dims[i])
+        for i in range(self.num_layers)])
         self.lstm1 = LSTMLayer(self.embed_dim, self.hidden_dims[0], self.hidden_dims[0])
+        self.layer_norm1 = nn.LayerNorm(self.hidden_dims[0])
         self.lstm2 = LSTMLayer(self.hidden_dims[0], self.hidden_dims[0], self.hidden_dims[1])
+        self.layer_norm2 = nn.LayerNorm(self.hidden_dims[1])
         self.dropout = dropout
         self.fc1 = nn.Linear(self.hidden_dims[-1], self.hidden_dims[-1] * 4)
         self.fc2 = nn.Linear(self.hidden_dims[-1] * 4, output_class)
         
     def forward(self, x, attention_mask, nonzero_index, return_inter=False):
         return_features = []
-        embed = self.embed(**{'input_ids': x, 'attention_mask':attention_mask})[0]
-        return_features.append(embed[:, 0, :])
-        
-        x, hs, cs, _ = self.lstm1(embed, attention_mask=attention_mask, nonzero_index=nonzero_index)
-        x = F.dropout(x, self.dropout, self.training)
-        return_features.append(x[:, 0, :])
-        
-        x, hs, cs, cls_token = self.lstm2(x, attention_mask=attention_mask, nonzero_index=nonzero_index)
-        x = F.dropout(x, self.dropout, self.training)
-        return_features.append(x[:, 0, :])
+        embed = self.embed(x)
+
+        for i in range(self.num_layers):
+            x, hs, cs, cls_token = self.lstm_layers[i](embed if i == 0 else x,
+                                               attention_mask=attention_mask,
+                                               nonzero_index=nonzero_index)
+            x = self.layer_norms[i](x)
+            x = F.dropout(x, self.dropout, self.training)
+            return_features.append(cls_token)
+
         
         x = self.fc1(cls_token)
         x = F.relu(x)
@@ -118,11 +128,3 @@ class SST2Model(nn.Module):
         
         
         
-if __name__ == "__main__":
-    sentences = ["my best friend is Lily.", "I totally own the world"]
-    tokenizer = tokenizer_class.from_pretrained(pretrained_weights)
-    model = model_class.from_pretrained(pretrained_weights)
-    
-    input_ids = tokenizer(sentences, add_special_tokens=True, padding=True, return_tensors='pt')
-    print(input_ids)
-    print(model(**input_ids))
