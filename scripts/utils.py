@@ -241,6 +241,14 @@ class MytSNE:
         return Y
 
     def calc_matrix_P(self, X: np.ndarray):
+        """Calculate matrix P for input matrix X
+
+        Args:
+            X (np.ndarray): input data points; shape: (N, d)
+
+        Returns:
+            _type_: _description_
+        """
         entropy=np.log(self.neighbors)
         n1,n2=X.shape
         D=np.square(metrics.pairwise_distances(X))
@@ -254,6 +262,16 @@ class MytSNE:
         return P
     
     def calc_p(self, D: np.ndarray, entropy: float, iter_times=50):
+        """calculate the term of P matrix for each data point
+
+        Args:
+            D (np.ndarray): distance between i and j datapoint
+            entropy (float): entropy for neighbors; determined by predefined neighbor numbers
+            iter_times (int, optional): _description_. Defaults to 50.
+
+        Returns:
+            _type_: each individual term in matrix P
+        """
         beta=1.0
         H=self.calc_entropy(D,beta)
         error=H-entropy
@@ -281,6 +299,15 @@ class MytSNE:
         return P
 
     def calc_entropy(self, D: np.ndarray, beta: float):
+        """Calculate entropy for distance and betavalue (1/(2\sigma_i^2))
+
+        Args:
+            D (np.ndarray): distance between i and j datapoint
+            beta (float): a variable for (1 / (2\sigma_i^2))
+
+        Returns:
+            _type_: entropy for this 
+        """
         P=np.exp(-D*beta)
         sumP=sum(P)
         sumP=np.maximum(sumP,1e-200)
